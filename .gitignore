@@ -1,0 +1,4 @@
+.sites-runtime/
+validation/artifacts/
+*.tar.gz
+__pycache__/

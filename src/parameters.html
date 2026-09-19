@@ -1,0 +1,56 @@
+
+      <details class="parameter-group" open>
+        <summary>信号设置</summary>
+        <div class="conditional" id="pwm-sv-settings">
+          <label class="form-label" for="pwm-scale">电平尺度（V）<input class="form-control" id="pwm-scale" type="number" min="0.001" max="100000" step="any" value="100" data-tooltip="SVPWM 的归一化电平尺度；目标基波峰值 = 电平尺度 × 调制比 ÷ 2。实际开关电平包括 0、±尺度/3、±2尺度/3。"></label>
+          <label class="form-label" for="pwm-modulation">调制比<input class="form-control" id="pwm-modulation" type="number" min="0" max="1" step="any" value="0.8"></label>
+        </div>
+        <div class="conditional" id="pwm-single-settings" hidden>
+          <label class="form-label" for="pwm-high">高电平（V）<input class="form-control" id="pwm-high" type="number" min="-100000" max="100000" step="any" value="100"></label>
+          <label class="form-label" for="pwm-low">低电平（V）<input class="form-control" id="pwm-low" type="number" min="-100000" max="100000" step="any" value="0"></label>
+          <label class="form-label" for="pwm-duty">平均占空比 D₀<input class="form-control" id="pwm-duty" type="number" min="0" max="1" step="any" value="0.5"></label>
+          <label class="form-label" for="pwm-depth" id="pwm-depth-label">占空比调制深度<input class="form-control" id="pwm-depth" type="number" min="0" max="0.5" step="any" value="0.4" data-tooltip="D(t)=D₀+深度×sin(2πft)，必须始终在 0–1 之间。"></label>
+        </div>
+        <label class="form-label" for="pwm-fe" id="pwm-fe-label">基波频率（Hz）<input class="form-control" id="pwm-fe" type="number" min="1" max="5000" step="any" value="50"></label>
+        <label class="form-label" for="pwm-window" id="pwm-window-label" hidden>观察载波周期数<input class="form-control" id="pwm-window" type="number" min="3" max="2000" step="1" value="20"></label>
+        <label class="form-label" for="pwm-fs">载波频率（Hz）<input class="form-control" id="pwm-fs" type="number" min="1000" max="100000" step="any" value="20000"></label>
+        <label class="form-label" for="pwm-alignment">PWM 对齐方式<select class="form-select" id="pwm-alignment"><option value="center">中心对齐</option><option value="edge">前沿对齐</option></select></label>
+        <div class="text-small tabular-nums" id="pwm-signal-summary" aria-live="polite"></div>
+ <div class="signal-levels" aria-label="信号电平定义"><span>电平上限<strong id="level-high">—</strong></span><span>电平下限<strong id="level-low">—</strong></span><span>目标基波峰值<strong id="level-amplitude">—</strong></span><span>电平跨度<strong id="level-span">—</strong></span></div>
+      </details>
+      <details class="parameter-group" open>
+        <summary>RC 滤波器</summary>
+        <label class="form-label" for="pwm-fc">一阶 RC 截止频率（Hz）<input class="form-control" id="pwm-fc" type="number" min="20" max="200000" step="any" value="10000"></label>
+        <label class="form-label" for="pwm-startup">初始状态<select class="form-select" id="pwm-startup"><option value="steady">稳态</option><option value="startup">指定 RC 初始输出</option></select></label>
+        <label class="form-label" for="pwm-initial" id="pwm-initial-label" hidden>初始输出（V）<input class="form-control" id="pwm-initial" type="number" min="-100000" max="100000" step="any" value="0"></label>
+      </details>
+      <details class="parameter-group" open>
+        <summary>ADC 采样</summary>
+        <button type="button" class="guide-link" id="pwm-adc-guide-open" aria-haspopup="dialog">查看 ADC 原理与配置指南</button>
+        <label class="form-label" for="pwm-hold">载波变化时固定<select class="form-select" id="pwm-hold"><option value="points">每周期点数 N</option><option value="rate">ADC 采样率</option></select></label>
+        <label class="form-label" for="pwm-fa">采样率（S/s）<input class="form-control" id="pwm-fa" type="number" min="100" max="2000000" step="any" value="200000"></label>
+        <label class="form-label" for="pwm-n"><span id="pwm-n-title">每周期点数 N（整数）</span><input class="form-control" id="pwm-n" type="number" min="1" max="2000" step="any" value="10"></label>
+        <label class="form-label" for="pwm-sample-phase">时钟偏移 <span class="tabular-nums" id="pwm-sample-phase-label">0.0%</span><input class="form-range" id="pwm-sample-phase" type="range" min="0" max="99.9" step="0.1" value="0" data-tooltip="相对于 t=0 的固定偏移，以一个 ADC 采样间隔为单位。不是随机抖动。"></label>
+        <label class="form-label" for="pwm-method">周期积分方法<select class="form-select" id="pwm-method"><option value="mean">周期内采样点均值</option><option value="trapezoid">边界插值＋梯形积分</option></select></label>
+        <details class="parameter-group" id="pwm-advanced">
+          <summary class="cursor-interaction">高级 · ADC 误差模型</summary>
+          <label class="form-check"><input class="form-check-input" id="pwm-hardware" type="checkbox"><span class="form-check-label">启用量化、限幅与测量偏差</span></label>
+          <div class="conditional" id="pwm-hardware-settings" hidden>
+            <div class="adc-presets" role="group" aria-label="ADC 参数预设"><button type="button" data-adc-preset="ideal">理想 ADC</button><button type="button" data-adc-preset="generic12">12 位 · ±100 V</button></div>
+            <p class="parameter-context">以下电压均为折算到被测信号侧的等效值，不是 ADC 芯片引脚电压。</p>
+            <label class="form-label" for="pwm-bits">ADC 标称位数<input class="form-control" id="pwm-bits" type="number" min="2" max="24" step="1" value="12" data-tooltip="决定量化级数。LSB =（等效输入上限 − 下限）÷（2^位数 − 1）。有效位数较低时可另外加入采样噪声。"></label>
+            <label class="form-label" for="pwm-adc-min">等效输入下限（V）<input class="form-control" id="pwm-adc-min" type="number" step="any" value="-100" data-tooltip="折算到被测信号侧的最小可测电压。低于此值的 RC 输出会被限幅。"></label>
+            <label class="form-label" for="pwm-adc-max">等效输入上限（V）<input class="form-control" id="pwm-adc-max" type="number" step="any" value="100" data-tooltip="折算到被测信号侧的最大可测电压。量程应覆盖基波、残余开关纹波及误差裕量。"></label>
+            <label class="form-label" for="pwm-adc-gain">增益误差系数<input class="form-control" id="pwm-adc-gain" type="number" min="0.01" max="10" step="any" value="1" data-tooltip="理想值为 1。测量结果高 0.5% 填 1.005，低 0.5% 填 0.995；这里不是电阻分压比。"></label>
+            <label class="form-label" for="pwm-adc-offset">等效零点偏差（V）<input class="form-control" id="pwm-adc-offset" type="number" step="any" value="0" data-tooltip="输入为 0 时，折算到被测信号侧后仍然存在的测量偏差。"></label>
+            <label class="form-label" for="pwm-adc-noise">采样噪声 RMS（V）<input class="form-control" id="pwm-adc-noise" type="number" min="0" step="any" value="0" data-tooltip="固定随机种子的独立高斯采样噪声，使相同参数可重复。不是模拟带限噪声或时钟抖动。"></label>
+            <div class="adc-health" id="pwm-adc-health" aria-live="polite">
+              <div><span>等效量程跨度</span><strong id="pwm-adc-span">—</strong></div>
+              <div><span>量化台阶 LSB</span><strong id="pwm-adc-lsb">—</strong></div>
+              <div><span>RC 输出范围</span><strong id="pwm-adc-signal-range">—</strong></div>
+              <p id="pwm-adc-range-status">启用模型后显示量程检查。</p>
+            </div>
+          </div>
+        </details>
+      </details>
+    

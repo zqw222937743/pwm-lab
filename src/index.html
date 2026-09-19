@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="交互式分析 PWM 信号、一阶 RC 滤波和 ADC 采样，比较周期积分与基波幅相误差。">
+  <meta name="theme-color" content="#182c46">
+  <title>PWM Lab · 信号滤波与采样分析</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23182c46'/%3E%3Cpath d='M5 22V10h7v12h8V10h7' fill='none' stroke='%234ee3bb' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+ <div id="pwm-lab">
+  <header class="app-header">
+   <div class="brand"><span class="brand-mark" aria-hidden="true">∿</span><div><span class="brand-name">PWM<span>Lab</span></span><span class="brand-caption">信号滤波与采样分析</span></div></div>
+   <div class="header-actions">
+    <button type="button" class="button secondary" id="pwm-load">导入配置</button>
+    <button type="button" class="button secondary" id="pwm-save">保存配置</button>
+    <details class="export-menu"><summary class="button primary">导出结果 <span aria-hidden="true">⌄</span></summary><div class="menu-panel"><button type="button" id="pwm-export-data">采样与积分数据 · CSV</button><button type="button" id="pwm-export-chart">整体波形 · SVG</button></div></details>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="切换至深色主题">◐</button>
+    <input id="pwm-config-file" type="file" accept=".json,application/json" hidden>
+   </div>
+  </header>
+  <div class="app-body">
+   <aside class="sidebar" aria-label="分析参数">
+    <div class="sidebar-heading"><div><span class="eyebrow">CONFIGURATION</span><h1>分析参数</h1></div><span class="version">2.1</span></div>
+    <label class="form-label type-picker" for="pwm-type">信号类型<select class="form-select" id="pwm-type"><option value="svpwm">SVPWM 示例</option><option value="sine">正弦占空比 PWM</option><option value="fixed">固定占空比 PWM</option></select></label>
+    <div class="signal-description" id="signal-description">三相调制的组合输出信号</div>
+    <!-- PARAMETERS -->
+   </aside>
+   <main class="main-workspace" aria-label="波形与测量结果">
+    <div class="workspace-heading"><div><span class="eyebrow">SIGNAL WORKSPACE</span><h2>波形工作台</h2></div><button type="button" class="button secondary mobile-parameters" id="parameters-toggle" aria-expanded="false">调整参数</button><div class="compute-state" id="compute-state" role="status">计算完成</div></div>
+    <div id="pwm-error" class="notice error" role="alert" hidden></div>
+    <div id="pwm-warning" class="notice warning" aria-live="polite" hidden></div>
+    <div class="measurement-switch" role="group" aria-label="测量目标">
+     <button type="button" data-target="cycle" aria-pressed="true">周期平均值与伏秒积</button><button type="button" data-target="fundamental" aria-pressed="false">基波幅值与相位</button>
+     <select id="pwm-target" aria-label="测量目标" hidden><option value="cycle">周期平均值与伏秒积</option><option value="fundamental">基波幅值与相位</option></select>
+    </div>
+    <div class="result-strip" aria-live="polite">
+     <div class="result-item"><span id="metric-one-label">真实周期均值</span><strong id="metric-one">—</strong><small id="metric-one-note">原始 PWM 连续积分</small></div>
+     <div class="result-item"><span id="metric-two-label">ADC 周期均值</span><strong id="metric-two">—</strong><small id="metric-two-note">周期内真实采样点</small></div>
+     <div class="result-item"><span id="metric-three-label">ADC 绝对偏差</span><strong id="metric-three">—</strong><small id="metric-three-note">ADC − 原始 PWM</small></div>
+    </div>
+    <section class="wave-panel" aria-label="波形观察">
+     <div class="panel-header"><div><span class="panel-index">01</span><h3>波形观察</h3></div><div class="playback"><button type="button" class="play-button" id="pwm-play">播放</button><span class="tabular-nums" id="pwm-time-label">0.000 ms</span></div></div>
+     <div class="legend" aria-label="波形图例">
+      <button type="button" data-series="raw" aria-pressed="true"><span class="swatch raw"></span>原始 PWM</button><button type="button" data-series="rc" aria-pressed="true"><span class="swatch rc"></span>RC 输出</button><button type="button" data-series="ref" aria-pressed="true"><span class="swatch ref"></span>目标信号</button><button type="button" data-series="adc" aria-pressed="true"><span class="swatch adc"></span>ADC 采样与插值</button>
+     </div>
+     <div class="chart-heading"><span id="pwm-overview-title">整体波形</span><span class="chart-meta">拖动时间轴或点击图表定位</span></div>
+     <svg class="plot" id="pwm-overview" role="img" aria-label="原始 PWM 与 RC 输出的范围包络和目标信号"></svg>
+     <label class="timeline" for="pwm-time"><span>观察位置</span><input id="pwm-time" type="range" min="0" max="1000" value="0" step="1" aria-label="观察位置"></label>
+     <div class="local-plots"><div><div class="chart-heading"><span>原始 PWM · 局部</span><span class="plot-tag raw-tag">INPUT</span></div><svg class="plot" id="pwm-before" role="img" aria-label="局部原始 PWM 与目标信号"></svg></div><div><div class="chart-heading"><span>RC 输出与 ADC · 局部</span><span class="plot-tag rc-tag">OUTPUT</span></div><svg class="plot" id="pwm-after" role="img" aria-label="局部 RC 输出、ADC 插值曲线及实际采样点"></svg></div></div>
+     <div id="pwm-detail" class="detail-line"></div>
+    </section>
+    <section class="analysis-panel" aria-label="测量分析">
+     <div class="panel-header"><div><span class="panel-index">02</span><h3>测量分析</h3></div><span class="analysis-mode" id="analysis-mode">周期积分</span></div>
+     <section id="pwm-cycle-panel">
+      <div class="analysis-toolbar"><span id="pwm-cycle-title" class="selected-cycle"></span><label class="basis-picker" for="pwm-basis">误差参考<select class="form-select" id="pwm-basis"><option value="span">信号电平跨度</option><option value="amplitude">目标基波峰值</option><option value="relative">真实周期均值（绝对值）</option></select></label></div>
+      <div class="basis-explanation" id="basis-explanation"></div>
+      <div class="table-responsive"><table class="table tabular-nums"><caption class="sr-only">真实周期均值、伏秒积及重建误差</caption><thead><tr><th scope="col">计算方式</th><th scope="col">均值（V）</th><th scope="col">伏秒积（V·μs）</th><th scope="col">误差（%）</th></tr></thead><tbody id="pwm-cycle-table"></tbody></table></div>
+      <div id="pwm-absolute-error" class="detail-line"></div>
+      <div class="error-chart-header"><h4>逐载波周期积分误差</h4><div class="legend" aria-label="积分误差曲线图例"><button type="button" data-series="analog" aria-pressed="true"><span class="swatch line-swatch analog"></span>RC 连续积分</button><button type="button" data-series="adc" aria-pressed="true"><span class="swatch line-swatch adc"></span>ADC 离散积分</button><button type="button" data-series="comp" aria-pressed="false"><span class="swatch line-swatch comp"></span>ADC＋RC 边界补偿</button></div></div>
+      <svg class="plot" id="pwm-integral-error" role="img" aria-label="逐载波周期 RC、ADC 与边界补偿的积分误差"></svg>
+      <div id="pwm-adc-detail" class="detail-line"></div>
+     </section>
+     <section id="pwm-fundamental-panel" hidden>
+      <div class="analysis-note">从实际波形和 ADC 样本提取，目标正弦相位为 0°。</div>
+      <div class="table-responsive"><table class="table tabular-nums"><caption class="sr-only">实际基波幅相、直流与残差</caption><thead><tr><th scope="col">信号</th><th scope="col">峰值（V）</th><th scope="col">相位（°）</th><th scope="col">直流（V）</th><th scope="col">残差 RMS（V）</th></tr></thead><tbody id="pwm-fundamental-table"></tbody></table></div>
+      <div id="pwm-fundamental-summary" class="detail-line"></div>
+     </section>
+     <details id="pwm-theory" class="theory-panel"><summary>RC 理论频率响应</summary><div class="metrics"><span id="pwm-theory-base">基波保留 <strong id="pwm-gain"></strong> · 相移 <strong id="pwm-phase"></strong></span><span>载波频率处保留 <strong id="pwm-carrier"></strong></span></div></details>
+    </section>
+    <footer class="workspace-footer"><span>理想一阶 RC · 浏览器内计算</span><details class="model-notes"><summary>模型说明</summary><p>周期积分与基波幅相是不同测量目标。边界补偿使用 ADC 插值端点，不保证降低误差。残差 RMS 包含基波与直流以外的成分。此工具不直接保证实际硬件精度。</p></details></footer>
+    <div id="pwm-export-status" class="export-status" role="status"></div>
+   </main>
+  </div>
+  <div class="tooltip" role="tooltip" id="pwm-tooltip"></div>
+  <dialog class="guide-dialog" id="pwm-adc-guide" aria-labelledby="pwm-adc-guide-title">
+   <div class="guide-dialog-header"><div><span class="eyebrow">ADC MODEL GUIDE</span><h2 id="pwm-adc-guide-title">ADC 原理与配置指南</h2></div><button type="button" class="dialog-close" id="pwm-adc-guide-close" aria-label="关闭指南">×</button></div>
+   <div class="guide-content">
+    <section><h3>模型处理顺序</h3><p>ADC 在 RC 输出上按均匀时钟采样。启用高级误差模型后，每个样本依次经过增益误差、零点偏差、独立高斯噪声、输入限幅和均匀量化。</p><div class="formula">x<sub>ADC</sub> = Quantize[Clip(G·x<sub>RC</sub> + V<sub>offset</sub> + n)]</div></section>
+    <section><h3>采样率、每载波点数与时钟偏移</h3><p>两者满足 <strong>f<sub>ADC</sub> = N·f<sub>PWM</sub></strong>。固定 N 适合与 PWM 同步的采样；固定采样率适合独立 ADC 时钟，此时每个载波周期的点数可能不同。时钟偏移表示整个 ADC 时钟相对 PWM 边界的固定位置，单位是一个 ADC 采样间隔的百分比，不是随机抖动。设计时应扫过 0–100%，检查最差相位。</p></section>
+    <section><h3>周期积分方法</h3><p>“周期内采样点均值”复现固件中对每个载波周期 N 点直接求平均的算法。“边界插值＋梯形积分”先用相邻样本线性插值载波周期边界，再对插值波形积分；它通常更适合非整数点数或异步采样，但不等于真实连续波形积分。</p></section>
+    <section><h3>量程、位数和量化</h3><p>输入上下限均为折算到被测信号侧的等效量程，不应直接填写 ADC 芯片引脚的 0–3.3 V。量程应覆盖 RC 输出、残余开关纹波、零偏与噪声裕量。</p><div class="formula">LSB = (V<sub>max</sub> − V<sub>min</sub>) / (2<sup>Nbits</sup> − 1)</div><p>缩小量程会改善量化分辨率，但可能产生限幅。标称位数不等于有效位数，额外噪声可以近似反映 ENOB 下降。</p></section>
+    <section><h3>增益、零偏与噪声</h3><p>增益误差系数的理想值为 1；高 0.5% 填 1.005，低 0.5% 填 0.995。它不是前端电阻分压比。零点偏差和噪声 RMS 也应折算到被测信号侧。页面噪声为固定随机种子的独立高斯噪声，不包含开关尖峰、带限噪声或时钟抖动。</p></section>
+    <section><h3>RC 边界补偿原理</h3><p>一阶 RC 满足 <strong>u = y + τ·dy/dt</strong>。在载波周期 [a,b] 上积分后：</p><div class="formula">∫u dt = ∫y dt + τ[y(b) − y(a)]</div><p>因此可在 ADC 对 RC 输出的积分结果上增加边界项：</p><div class="formula">I<sub>corrected</sub> = I<sub>ADC</sub> + τ[y<sub>interp</sub>(b) − y<sub>interp</sub>(a)]</div><p>页面只使用 ADC 相邻样本插值得到的边界值，不偷用仿真的准确端点。补偿成立的前提是前端可近似为已知时间常数的一阶 RC；量化、噪声、端点插值误差、器件容差、多阶滤波和采样不同步都可能使补偿变差，所以必须比较补偿前后误差，不能默认补偿一定更准。</p></section>
+    <section><h3>推荐配置步骤</h3><ol><li>先关闭高级误差模型，只分析 RC、采样率和采样相位。</li><li>选择与固件一致的积分方法，并扫过采样时钟偏移。</li><li>开启高级模型，填写折算到被测侧的实际量程和 ADC 位数。</li><li>再逐项加入增益误差、零偏和实测噪声 RMS。</li><li>确认限幅样本数为 0，并比较 ADC 离散积分与边界补偿曲线。</li></ol></section>
+   </div>
+   <div class="guide-dialog-footer"><button type="button" class="button primary" id="pwm-adc-guide-done">知道了</button></div>
+  </dialog>
+ </div>
+ <script src="vendor/d3.min.js"></script>
+ <script src="assets/storage.js"></script>
+ <script src="assets/model.js"></script><script src="assets/adc.js"></script><script src="assets/analysis.js"></script><script src="assets/view.js"></script><script src="assets/product.js"></script><script src="assets/webmcp.js"></script>
+</body>
+</html>
