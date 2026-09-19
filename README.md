@@ -6,6 +6,8 @@
 
 站点注册信息位于 `.openai/hosting.json`。公开 URL 以成功发布返回的 URL 为准，发布结果另存于验证报告目录。
 
+GitHub 镜像通过 `.github/workflows/pages.yml` 自动发布 `dist/`。推送到 `main` 后，GitHub Pages 会更新 `https://zqw222937743.github.io/pwm-lab/`；仓库地址为 `https://github.com/zqw222937743/pwm-lab`。
+
 ## UI 与产品流程
 
 - 顶部产品栏：配置导入、保存、CSV/SVG 导出和浅色/深色主题切换。
@@ -66,6 +68,7 @@ v2.1.0/
 ├─ README.md
 ├─ build.py                  静态文件生成
 ├─ .openai/hosting.json      站点身份与发布目录
+├─ .github/workflows/        GitHub Pages 自动发布
 ├─ src/
 │  ├─ index.html             独立产品页面
 │  ├─ parameters.html        参数面板
